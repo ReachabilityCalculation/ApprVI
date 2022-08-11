@@ -93,7 +93,8 @@ for id in np.arange(N):
     for i in range(1, 14):
         H.append(h(i, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y, ball))
 H = np.array(H).reshape(N, 13)  # To convert a state to a feature vector
-print('prepare H is done.')
+np.savez('appr_reachability_soccer_lr_features', H)
+print('Prepare features is done. It is saved at appr_reachability_soccer_lr_features.npz')
 print("Current Time = ", datetime.now().strftime("%H:%M:%S"))
 
 V_prev = np.zeros(shape=(N+2))
