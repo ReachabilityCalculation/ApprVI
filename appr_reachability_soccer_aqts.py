@@ -8,6 +8,8 @@ import scipy
 from datetime import datetime
 
 np.random.seed(20210727)
+N = 6002500 # total N non-final states
+NS = 60000 # number of samples to estimate max and 90% errors
 
 p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y, ball = 0,0,0,0,0,0,0,0,0
 
@@ -34,9 +36,6 @@ def id_to_state(id):
     p4_y = id // 4
     ball = id % 4
     return p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y, ball
-
-N = 6002500 # total N non-final states
-NS = 3000
 
 # list of actions: shoot, p1_down, p1_right, p2_down, p2_right, p3_down, p3_right, p4_down, p4_right, pass_1, pass_2, pass_3
 PR_a0 = sparse.load_npz('PR_a0.npz')
@@ -90,6 +89,12 @@ for i in [90, 100]:
     print('percential %d of |V^k-V_true| = %0.4f'%(i, np.percentile(np.abs(V - V_true)[2:], i)))
 show_error_distribution(V)
 
+samples = np.random.choice(np.arange(0, N), NS, replace=False) + 2
+V1 = V[samples]
+V2 = T(V)[samples]
+for i in [90, 100]:
+    print('percential %d of |V^k-V^(k+1)| = %0.4f'%(i, np.percentile(np.abs(V1 - V2)[2:], i)))
+
 class MyBaseClass(object):
     foo = 4
 
@@ -111,7 +116,6 @@ def init_Q_value(s, a):
     for next_s in (eval('(PR_a%d[%d].indices)'%(a,s))):
         sum += eval('(PR_a%d[%d, next_s])'%(a,s)) * V[next_s]
     return sum
-
 
 def AQTS(state, margin=0.03, MAX_N=5000, c=1.4, debug=False):
     s0 = QVNode('s0', state, -1, V[state], 1.0, 0)
@@ -184,12 +188,18 @@ def AQTS(state, margin=0.03, MAX_N=5000, c=1.4, debug=False):
                 break
     return s.value
 
-samples = np.random.choice(np.arange(0, N), 50, replace=False)
+samples = np.random.choice(np.arange(0, N), 500, replace=False)
+errors = []
 print("Current Time = ", datetime.now().strftime("%H:%M:%S"))
+print('state_id,V_true,V^k,V^(k+n),ErrorV^(k+n)')
 for x in samples:
-    print('state_id=%d, V_true=%0.4f, V^k=%0.4f, V^(k+n)=%0.4f'%(x, V_true[x], V[x],
-            AQTS(x, margin=0.00, MAX_N=50000, c=0.01, debug=False)))
+    V_refined = AQTS(x, margin=0.00, MAX_N=50000, c=0.01, debug=False)
+    e = abs(V_refined-V_true[x])
+    print('%d,%0.4f,%0.4f,%0.4f,%0.4f'%(x, V_true[x], V[x], V_refined, e))
+    errors.append(e)
 print("Current Time = ", datetime.now().strftime("%H:%M:%S"))
+for i in [90, 100]:
+    print('percential %d of errors after AQTS = %0.4f'%(i, np.percentile(errors, i)))
 
 
 
